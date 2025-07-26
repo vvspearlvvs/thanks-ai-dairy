@@ -2,41 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Gratitude Diary Design System - Warm and Emotional Colors */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Base colors - warm and inviting */
+    --background: 35 100% 98%;
+    --foreground: 25 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 25 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 25 25% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 25 85% 55%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 35 50% 95%;
+    --secondary-foreground: 25 25% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 35 25% 90%;
+    --muted-foreground: 25 15% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 45 95% 85%;
+    --accent-foreground: 25 25% 15%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 35 20% 85%;
+    --input: 35 20% 92%;
+    --ring: 25 85% 55%;
 
-    --radius: 0.5rem;
+    /* Emotion-based colors */
+    --happy: 45 100% 65%;
+    --happy-light: 45 100% 85%;
+    --joy: 30 95% 60%;
+    --joy-light: 30 95% 80%;
+    --proud: 120 60% 50%;
+    --proud-light: 120 60% 80%;
+    --calm: 220 45% 60%;
+    --calm-light: 220 45% 85%;
+    --tired: 0 0% 50%;
+    --tired-light: 0 0% 80%;
+    --sad: 250 45% 55%;
+    --sad-light: 250 45% 85%;
+
+    /* Gradients */
+    --gradient-warm: linear-gradient(135deg, hsl(var(--happy-light)), hsl(var(--joy-light)));
+    --gradient-calm: linear-gradient(135deg, hsl(var(--calm-light)), hsl(var(--primary) / 0.3));
+    --gradient-reflection: linear-gradient(180deg, hsl(var(--background)), hsl(var(--accent)));
+
+    /* Shadows and glows */
+    --shadow-warm: 0 10px 30px -5px hsl(var(--primary) / 0.2);
+    --shadow-soft: 0 4px 20px -2px hsl(var(--primary) / 0.1);
+    --glow-emotion: 0 0 20px hsl(var(--primary) / 0.3);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-gentle: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+    --radius: 1rem;
 
     --sidebar-background: 0 0% 98%;
 
