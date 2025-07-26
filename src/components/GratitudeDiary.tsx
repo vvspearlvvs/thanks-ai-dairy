@@ -272,15 +272,15 @@ ${isPositive ? `
               </Label>
               <Textarea
                 id="self"
-                placeholder="나 자신에게 감사한 일을 적어보세요... (20자 내외)"
+                placeholder="나 자신에게 감사한 일을 적어보세요... (50자 내외)"
                 value={entry.self}
                 onChange={(e) => setEntry(prev => ({ ...prev, self: e.target.value }))}
                 className="transition-all duration-300 focus:shadow-soft resize-none"
                 rows={2}
-                maxLength={30}
+                maxLength={60}
               />
               <div className="text-right text-xs text-muted-foreground">
-                {entry.self.length}/30
+                {entry.self.length}/60
               </div>
             </div>
 
@@ -290,15 +290,15 @@ ${isPositive ? `
               </Label>
               <Textarea
                 id="others"
-                placeholder="다른 사람에게 감사한 일을 적어보세요... (20자 내외)"
+                placeholder="다른 사람에게 감사한 일을 적어보세요... (50자 내외)"
                 value={entry.others}
                 onChange={(e) => setEntry(prev => ({ ...prev, others: e.target.value }))}
                 className="transition-all duration-300 focus:shadow-soft resize-none"
                 rows={2}
-                maxLength={30}
+                maxLength={60}
               />
               <div className="text-right text-xs text-muted-foreground">
-                {entry.others.length}/30
+                {entry.others.length}/60
               </div>
             </div>
 
@@ -308,15 +308,15 @@ ${isPositive ? `
               </Label>
               <Textarea
                 id="situation"
-                placeholder="상황이나 환경에 감사한 일을 적어보세요... (20자 내외)"
+                placeholder="상황이나 환경에 감사한 일을 적어보세요... (50자 내외)"
                 value={entry.situation}
                 onChange={(e) => setEntry(prev => ({ ...prev, situation: e.target.value }))}
                 className="transition-all duration-300 focus:shadow-soft resize-none"
                 rows={2}
-                maxLength={30}
+                maxLength={60}
               />
               <div className="text-right text-xs text-muted-foreground">
-                {entry.situation.length}/30
+                {entry.situation.length}/60
               </div>
             </div>
           </div>
