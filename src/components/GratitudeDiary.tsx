@@ -18,7 +18,7 @@ interface GratitudeEntry {
   others: string;
   situation: string;
   emotion: Emotion;
-  feedback: string[];
+  summary: string; // 한줄 일기 요약
   createdAt: number;
 }
 
@@ -27,17 +27,16 @@ interface MonthlyReport {
   emotionDistribution: Record<Emotion, number>;
   topEmotions: Emotion[];
   positiveRate: number;
-  topKeywords: string[];
   summary: string;
 }
 
 const emotionConfig = {
-  '행복': { color: 'happy', icon: '😊', theme: 'warm' },
-  '기쁨': { color: 'joy', icon: '😄', theme: 'warm' },
-  '뿌듯': { color: 'proud', icon: '😌', theme: 'success' },
-  '편안': { color: 'calm', icon: '😌', theme: 'calm' },
+  '행복': { color: 'happy', icon: '🥰', theme: 'warm' },
+  '기쁨': { color: 'joy', icon: '🥳', theme: 'joy' },
+  '뿌듯': { color: 'proud', icon: '😄', theme: 'success' },
+  '편안': { color: 'calm', icon: '😉', theme: 'calm' },
   '피곤': { color: 'tired', icon: '😴', theme: 'neutral' },
-  '우울': { color: 'sad', icon: '😔', theme: 'melancholy' }
+  '우울': { color: 'sad', icon: '😢', theme: 'melancholy' }
 };
 
 type ViewMode = 'diary' | 'list' | 'report';
@@ -50,14 +49,13 @@ export const GratitudeDiary = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('diary');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   
-  const [entry, setEntry] = useState<Omit<GratitudeEntry, 'id' | 'date' | 'feedback' | 'createdAt'>>({
+  const [entry, setEntry] = useState<Omit<GratitudeEntry, 'id' | 'date' | 'createdAt'>>({
     self: '',
     others: '',
     situation: '',
-    emotion: '행복'
+    emotion: '행복',
+    summary: ''
   });
-  
-  const [feedback, setFeedback] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [entries, setEntries] = useState<GratitudeEntry[]>([]);
   const { toast } = useToast();
@@ -73,7 +71,13 @@ export const GratitudeDiary = () => {
     // 저장된 일기 불러오기
     const savedEntries = localStorage.getItem('gratitude-entries');
     if (savedEntries) {
-      setEntries(JSON.parse(savedEntries));
+      const parsedEntries = JSON.parse(savedEntries);
+      // 기존 데이터에 summary 필드가 없으면 추가
+      const updatedEntries = parsedEntries.map((entry: any) => ({
+        ...entry,
+        summary: entry.summary || ''
+      }));
+      setEntries(updatedEntries);
     }
   }, []);
 
@@ -93,9 +97,9 @@ export const GratitudeDiary = () => {
         self: existingEntry.self,
         others: existingEntry.others,
         situation: existingEntry.situation,
-        emotion: existingEntry.emotion
+        emotion: existingEntry.emotion,
+        summary: existingEntry.summary || ''
       });
-      setFeedback(existingEntry.feedback);
     } else {
       resetForm();
     }
@@ -119,50 +123,37 @@ export const GratitudeDiary = () => {
     });
   };
 
-  const generatePrompt = (entry: Omit<GratitudeEntry, 'id' | 'date' | 'feedback' | 'createdAt'>, emotion: Emotion): string => {
-    const isPositive = ['행복', '기쁨', '뿌듯'].includes(emotion);
-    const isNeutral = emotion === '편안';
-    
-    let emotionGuidance = '';
-    if (isPositive) {
-      emotionGuidance = `
-감정이 긍정적이므로:
-- 각 항목에 대해 공감하며 감정의 원천을 해석해줘 (가치, 선택, 노력 관점에서)
-- 이 감정이 지속될 수 있도록 응원하는 메시지를 포함해줘
-- 마지막은 반드시 밝고 긍정적인 정서로 마무리해줘`;
-    } else if (isNeutral) {
-      emotionGuidance = `
-감정이 편안한 상태이므로:
-- 현재 상태를 수용하고 정서 유지를 지지해줘
-- 자기 돌봄과 마음의 평화를 권유해줘
-- 차분하고 부드러운 말투로 마무리해줘`;
-    } else {
-      emotionGuidance = `
-감정이 힘든 상태이므로:
-- 각 항목에 대해 깊은 공감을 표현해줘
-- 현재 감정을 이해하며 리프레이밍을 도와줘
-- 자기 성찰을 돕는 부드러운 질문을 포함해줘
-- 마지막은 진심 있는 위로와 회복 메시지로 마무리해줘`;
-    }
-    
-    return `너는 정서 심리 코치이자 감사일기 리플렉션 전문가야.
+  const generateSummaryPrompt = (entry: Omit<GratitudeEntry, 'id' | 'date' | 'createdAt'>, emotion: Emotion): string => {
+    return `당신은 감정에 섬세하게 반응하는 고급 감성 작가입니다.
 
-사용자의 감사 항목들:
-1. 나에 대한 감사: "${entry.self}"
-2. 타인에 대한 감사: "${entry.others}"  
-3. 상황에 대한 감사: "${entry.situation}"
+사용자는 하루 동안 다음 네 가지 정보를 기록했습니다:
+- 나에 대한 감사: "${entry.self}"
+- 타인에 대한 감사: "${entry.others}"
+- 상황에 대한 감사: "${entry.situation}"
+- 감정: ${emotion} (하루의 전반적인 정서: 행복, 뿌듯, 기쁨, 편안, 피곤, 우울 중 하나)
 
-현재 감정: ${emotion}
+당신의 역할은 이 정보를 바탕으로, **사용자의 하루를 1문장(40자 내외)**으로 요약하는 것입니다.
 
-${emotionGuidance}
+---
 
-응답 형식:
-각 항목에 대해 1문장씩, 총 3줄로 답변해줘.
-각 문장은 50~90자 사이로 작성하고, 문체는 자연스럽고 따뜻하게 일기 코치처럼 작성해줘.
-번호 없이 각 줄만 작성해줘.`;
+## ✅ 반드시 반영할 요소:
+
+1. **실제로 일어난 일 또는 구체적인 행동**을 요약 안에 포함시킬 것  
+2. 그 일이 사용자의 하루에 어떤 **의미**였는지를 **간접적으로 묘사**할 것  
+3. 감정은 직접 언급하지 말고, 문장의 어조·단어·뉘앙스를 통해 **정서적으로 암시**할 것  
+4. 문장은 반드시 **40자 내외, 1문장**, 느낌표/의문문/말줄임표 없이 작성  
+5. 말투는 **담백하고 따뜻하게**, 유머는 **은근하게**, **문학적 여운을 가볍게 풍기도록**  
+6. 감정이 '피곤', '우울'일 경우 → **왜 그 감정이 들었을지 심리적으로 추론**하고,  
+   → 그걸 **감정에 빠지지 않고 조용히 받아들이는 어조로** 표현  
+7. 감정이 '행복', '뿌듯', '기쁨'일 경우 → **그 감정이 형성된 가치/행동/선택**을 중심으로 묘사하고,  
+   → **잔잔한 응원이나 자기 확신의 톤**을 담을 것
+
+번호나 기호 없이 한 줄로만 작성해줘.`;
   };
 
-  const generateFeedback = async () => {
+
+
+  const handleSave = async () => {
     if (!apiKey) {
       toast({
         title: "API 키가 필요합니다",
@@ -182,10 +173,10 @@ ${emotionGuidance}
     }
 
     setIsLoading(true);
-    setFeedback([]);
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
+      // 1. 한줄 일기 생성
+      const summaryResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,46 +184,45 @@ ${emotionGuidance}
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: generatePrompt(entry, entry.emotion)
+              text: generateSummaryPrompt(entry, entry.emotion)
             }]
           }]
         })
       });
 
-      if (!response.ok) {
-        throw new Error('API 요청이 실패했습니다');
+      if (!summaryResponse.ok) {
+        throw new Error('한줄 일기 생성에 실패했습니다');
       }
 
-      const data = await response.json();
-      const feedbackText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const summaryData = await summaryResponse.json();
+      const summaryText = summaryData.candidates?.[0]?.content?.parts?.[0]?.text || '';
       
-      if (feedbackText) {
-        const feedbackLines = feedbackText.trim().split('\n').filter(line => line.trim() !== '');
-        const finalFeedback = feedbackLines.slice(0, 3); // 최대 3줄만
-        setFeedback(finalFeedback);
-        
-        // 일기 저장
-        const newEntry: GratitudeEntry = {
-          id: Date.now().toString(),
-          date: selectedDate,
-          ...entry,
-          feedback: finalFeedback,
-          createdAt: Date.now()
-        };
-
-        const updatedEntries = existingEntry 
-          ? entries.map(e => e.date === selectedDate ? newEntry : e)
-          : [...entries, newEntry];
-        
-        saveEntries(updatedEntries);
-        
-        toast({
-          title: "일기가 저장되었습니다",
-          description: "AI 코치의 따뜻한 피드백과 함께 일기가 저장되었어요.",
-        });
-      } else {
-        throw new Error('피드백 생성에 실패했습니다');
+      if (!summaryText) {
+        throw new Error('한줄 일기 생성에 실패했습니다');
       }
+
+      const summary = summaryText.trim();
+      setEntry(prev => ({ ...prev, summary }));
+
+      // 일기 저장
+      const newEntry: GratitudeEntry = {
+        id: Date.now().toString(),
+        date: selectedDate,
+        ...entry,
+        summary,
+        createdAt: Date.now()
+      };
+
+      const updatedEntries = existingEntry 
+        ? entries.map(e => e.date === selectedDate ? newEntry : e)
+        : [...entries, newEntry];
+      
+      saveEntries(updatedEntries);
+      
+      toast({
+        title: "일기가 저장되었습니다",
+        description: "한줄 일기가 생성되었어요.",
+      });
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -245,14 +235,16 @@ ${emotionGuidance}
     }
   };
 
+
+
   const resetForm = () => {
     setEntry({
       self: '',
       others: '',
       situation: '',
-      emotion: '행복'
+      emotion: '행복',
+      summary: ''
     });
-    setFeedback([]);
   };
 
   const deleteEntry = () => {
@@ -288,7 +280,7 @@ ${emotionGuidance}
     });
 
     const totalEntries = monthEntries.length;
-    const positiveEmotions = ['행복', '기쁨', '뿌듯'] as Emotion[];
+    const positiveEmotions = ['행복', '기쁨'] as Emotion[];
     const positiveCount = positiveEmotions.reduce((sum, emotion) => sum + emotionDistribution[emotion], 0);
     const positiveRate = totalEntries > 0 ? Math.round((positiveCount / totalEntries) * 100) : 0;
 
@@ -297,20 +289,7 @@ ${emotionGuidance}
       .slice(0, 3)
       .map(([emotion]) => emotion as Emotion);
 
-    // 키워드 분석
-    const keywordCount: Record<string, number> = {};
-    monthEntries.forEach(entry => {
-      const text = `${entry.self} ${entry.others} ${entry.situation}`;
-      const words = text.split(/\s+/).filter(word => word.length > 1);
-      words.forEach(word => {
-        keywordCount[word] = (keywordCount[word] || 0) + 1;
-      });
-    });
 
-    const topKeywords = Object.entries(keywordCount)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 5)
-      .map(([keyword]) => keyword);
 
     const summary = totalEntries > 0 
       ? `이번 달, 당신은 ${totalEntries}일의 감사일기를 기록했고, ${positiveRate}%의 날에 긍정적인 감정을 느꼈어요.`
@@ -321,7 +300,6 @@ ${emotionGuidance}
       emotionDistribution,
       topEmotions,
       positiveRate,
-      topKeywords,
       summary
     };
   };
@@ -342,7 +320,7 @@ ${emotionGuidance}
             <Sparkles className="w-8 h-8 text-primary animate-float" />
           </div>
           <p className="text-muted-foreground text-lg">
-            작고 사소하지만 행복하고 감사했던 순간들을 기록하고, AI 코치와 함께 감정을 돌아보세요
+            작고 사소하지만 행복하고 감사했던 순간들을 기록하면, AI가 한줄 일기를 작성해줍니다.
           </p>
         </div>
 
@@ -528,7 +506,7 @@ ${emotionGuidance}
 
                              <div className="flex gap-3 mt-6">
                  <Button 
-                   onClick={generateFeedback}
+                   onClick={handleSave}
                    disabled={isLoading || !apiKey}
                    variant="emotion"
                    className="flex-1"
@@ -536,12 +514,12 @@ ${emotionGuidance}
                    {isLoading ? (
                      <>
                        <Loader2 className="w-4 h-4 animate-spin" />
-                       AI 코치가 생각 중...
+                       저장 중...
                      </>
                    ) : (
                      <>
-                       <Send className="w-4 h-4" />
-                       {existingEntry ? '수정하기' : '피드백 받기'}
+                       <CheckCircle className="w-4 h-4" />
+                       {existingEntry ? '수정하기' : '저장하기'}
                      </>
                    )}
                  </Button>
@@ -556,30 +534,24 @@ ${emotionGuidance}
                </div>
             </Card>
 
-            {/* AI Feedback */}
-            {feedback.length > 0 && (
-              <Card className="p-6 shadow-emotion animate-fade-in">
+            {/* AI Summary */}
+            {entry.summary && (
+              <Card className="p-6 shadow-gentle animate-fade-in">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="text-2xl">{currentTheme.icon}</div>
+                  <div className="text-2xl">📝</div>
                   <Label className="text-lg font-semibold text-primary">
-                    AI 코치의 피드백
+                    한줄 일기 요약
                   </Label>
                 </div>
-                <div className="space-y-4">
-                  {feedback.map((line, index) => (
-                    <div 
-                      key={index}
-                      className="p-4 bg-accent/30 rounded-lg border-l-4 border-primary animate-fade-in"
-                      style={{ animationDelay: `${index * 200}ms` }}
-                    >
-                      <p className="text-foreground leading-relaxed font-medium">
-                        {index + 1}. {line}
-                      </p>
-                    </div>
-                  ))}
+                <div className="p-4 bg-accent/20 rounded-lg border-l-4 border-accent animate-fade-in">
+                  <p className="text-foreground leading-relaxed font-medium">
+                    {entry.summary}
+                  </p>
                 </div>
               </Card>
             )}
+
+
           </>
         )}
 
@@ -613,21 +585,15 @@ ${emotionGuidance}
                           {format(new Date(entry.date), 'yyyy년 MM월 dd일', { locale: ko })}
                         </span>
                       </div>
-                      <div className="space-y-1 text-sm">
-                        <p><strong>나:</strong> {entry.self}</p>
-                        <p><strong>타인:</strong> {entry.others}</p>
-                        <p><strong>상황:</strong> {entry.situation}</p>
-                      </div>
-                      {entry.feedback.length > 0 && (
-                        <div className="mt-3 pt-3 border-t">
-                          <p className="text-xs text-muted-foreground mb-2">AI 코치 피드백:</p>
-                          <div className="space-y-1">
-                            {entry.feedback.map((line, index) => (
-                              <p key={index} className="text-xs text-foreground">
-                                {index + 1}. {line}
-                              </p>
-                            ))}
-                          </div>
+                      {entry.summary ? (
+                        <div className="space-y-1 text-sm">
+                          <p className="text-foreground font-medium">{entry.summary}</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1 text-sm">
+                          <p><strong>나:</strong> {entry.self}</p>
+                          <p><strong>타인:</strong> {entry.others}</p>
+                          <p><strong>상황:</strong> {entry.situation}</p>
                         </div>
                       )}
                     </div>
@@ -660,6 +626,8 @@ ${emotionGuidance}
                 <div className="p-4 bg-accent/30 rounded-lg">
                   <p className="text-foreground font-medium">{monthlyReport.summary}</p>
                 </div>
+
+
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -714,22 +682,7 @@ ${emotionGuidance}
                    </div>
                  </div>
 
-                 {/* Top Keywords */}
-                 {monthlyReport.topKeywords.length > 0 && (
-                   <div>
-                     <Label className="text-lg font-semibold mb-4 block">자주 감사했던 키워드</Label>
-                     <div className="flex flex-wrap gap-2">
-                       {monthlyReport.topKeywords.map((keyword, index) => (
-                         <span 
-                           key={keyword}
-                           className="px-3 py-1 bg-accent/50 rounded-full text-sm font-medium text-foreground"
-                         >
-                           {keyword}
-                         </span>
-                       ))}
-                     </div>
-                   </div>
-                 )}
+
               </div>
             )}
           </Card>

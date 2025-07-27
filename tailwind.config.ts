@@ -152,6 +152,7 @@ export default {
 			boxShadow: {
 				'warm': 'var(--shadow-warm)',
 				'soft': 'var(--shadow-soft)',
+				'gentle': 'var(--shadow-gentle)',
 				'emotion': 'var(--glow-emotion)'
 			}
 		}
