@@ -5,7 +5,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, Sparkles, Send, Key, CheckCircle, Loader2, Calendar, BarChart3, List, Plus, ArrowLeft, Trash2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Heart, Sparkles, Send, Key, CheckCircle, Loader2, Calendar, BarChart3, List, Plus, ArrowLeft, Trash2, LogOut, User } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -42,6 +43,7 @@ const emotionConfig = {
 type ViewMode = 'diary' | 'list' | 'report';
 
 export const GratitudeDiary = () => {
+  const { user, signOut } = useAuth();
   const [apiKey, setApiKey] = useState('');
   const [tempApiKey, setTempApiKey] = useState('');
   const [showApiInput, setShowApiInput] = useState(false);
@@ -312,6 +314,22 @@ export const GratitudeDiary = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-4 animate-fade-in">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <User className="w-5 h-5 text-primary" />
+              <span className="text-sm text-muted-foreground">{user?.email}</span>
+            </div>
+            <Button 
+              onClick={signOut} 
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <LogOut className="w-4 h-4" />
+              로그아웃
+            </Button>
+          </div>
+          
           <div className="flex items-center justify-center gap-3">
             <Heart className="w-8 h-8 text-primary animate-gentle-pulse" />
             <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-warm bg-clip-text text-transparent">
