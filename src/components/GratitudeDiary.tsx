@@ -6,22 +6,10 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGratitudeEntries, type Emotion, type GratitudeEntry } from '@/hooks/useGratitudeEntries';
 import { Heart, Sparkles, Send, Key, CheckCircle, Loader2, Calendar, BarChart3, List, Plus, ArrowLeft, Trash2, LogOut, User } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
-
-type Emotion = '행복' | '기쁨' | '뿌듯' | '편안' | '피곤' | '우울';
-
-interface GratitudeEntry {
-  id: string;
-  date: string;
-  self: string;
-  others: string;
-  situation: string;
-  emotion: Emotion;
-  summary: string; // 한줄 일기 요약
-  createdAt: number;
-}
 
 interface MonthlyReport {
   totalEntries: number;
@@ -44,6 +32,7 @@ type ViewMode = 'diary' | 'list' | 'report';
 
 export const GratitudeDiary = () => {
   const { user, signOut } = useAuth();
+  const { entries, loading: entriesLoading, saveEntry, deleteEntry: deleteEntryFromDB, getEntryByDate, getEntriesByMonth } = useGratitudeEntries();
   const [apiKey, setApiKey] = useState('');
   const [tempApiKey, setTempApiKey] = useState('');
   const [showApiInput, setShowApiInput] = useState(false);
@@ -51,7 +40,7 @@ export const GratitudeDiary = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('diary');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   
-  const [entry, setEntry] = useState<Omit<GratitudeEntry, 'id' | 'date' | 'createdAt'>>({
+  const [entry, setEntry] = useState<Omit<GratitudeEntry, 'id' | 'date' | 'createdAt' | 'user_id'>>({
     self: '',
     others: '',
     situation: '',
@@ -59,7 +48,6 @@ export const GratitudeDiary = () => {
     summary: ''
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [entries, setEntries] = useState<GratitudeEntry[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -69,28 +57,10 @@ export const GratitudeDiary = () => {
     } else {
       setShowApiInput(true);
     }
-    
-    // 저장된 일기 불러오기
-    const savedEntries = localStorage.getItem('gratitude-entries');
-    if (savedEntries) {
-      const parsedEntries = JSON.parse(savedEntries);
-      // 기존 데이터에 summary 필드가 없으면 추가
-      const updatedEntries = parsedEntries.map((entry: any) => ({
-        ...entry,
-        summary: entry.summary || ''
-      }));
-      setEntries(updatedEntries);
-    }
   }, []);
 
-  // 일기 저장 함수
-  const saveEntries = (newEntries: GratitudeEntry[]) => {
-    setEntries(newEntries);
-    localStorage.setItem('gratitude-entries', JSON.stringify(newEntries));
-  };
-
   // 선택된 날짜의 일기 확인
-  const existingEntry = entries.find(e => e.date === selectedDate);
+  const existingEntry = getEntryByDate(selectedDate);
 
   // 선택된 날짜가 변경되면 기존 일기 불러오기
   useEffect(() => {
@@ -125,7 +95,7 @@ export const GratitudeDiary = () => {
     });
   };
 
-  const generateSummaryPrompt = (entry: Omit<GratitudeEntry, 'id' | 'date' | 'createdAt'>, emotion: Emotion): string => {
+  const generateSummaryPrompt = (entry: Omit<GratitudeEntry, 'id' | 'date' | 'createdAt' | 'user_id'>, emotion: Emotion): string => {
     return `당신은 감정에 섬세하게 반응하는 고급 감성 작가입니다.
 
 사용자는 하루 동안 다음 네 가지 정보를 기록했습니다:
@@ -206,25 +176,20 @@ export const GratitudeDiary = () => {
       const summary = summaryText.trim();
       setEntry(prev => ({ ...prev, summary }));
 
-      // 일기 저장
-      const newEntry: GratitudeEntry = {
-        id: Date.now().toString(),
+      // Supabase에 일기 저장
+      const savedEntry = await saveEntry({
         date: selectedDate,
-        ...entry,
-        summary,
-        createdAt: Date.now()
-      };
-
-      const updatedEntries = existingEntry 
-        ? entries.map(e => e.date === selectedDate ? newEntry : e)
-        : [...entries, newEntry];
-      
-      saveEntries(updatedEntries);
-      
-      toast({
-        title: "일기가 저장되었습니다",
-        description: "한줄 일기가 생성되었어요.",
+        self: entry.self,
+        others: entry.others,
+        situation: entry.situation,
+        emotion: entry.emotion,
+        summary
       });
+
+      if (savedEntry) {
+        // 저장 성공시 토스트는 hook에서 처리됨
+        // 로컬 상태는 자동으로 업데이트됨
+      }
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -249,29 +214,19 @@ export const GratitudeDiary = () => {
     });
   };
 
-  const deleteEntry = () => {
+  const deleteEntry = async () => {
     if (!existingEntry) return;
     
-    const updatedEntries = entries.filter(e => e.date !== selectedDate);
-    saveEntries(updatedEntries);
-    resetForm();
-    
-    toast({
-      title: "일기가 삭제되었습니다",
-      description: "선택한 날짜의 일기가 삭제되었어요.",
-    });
+    const success = await deleteEntryFromDB(selectedDate);
+    if (success) {
+      resetForm();
+    }
   };
 
   // 월간 리포트 생성
   const generateMonthlyReport = (): MonthlyReport => {
     const [year, month] = selectedMonth.split('-').map(Number);
-    const startDate = startOfMonth(new Date(year, month - 1));
-    const endDate = endOfMonth(new Date(year, month - 1));
-    
-    const monthEntries = entries.filter(entry => {
-      const entryDate = new Date(entry.date);
-      return entryDate >= startDate && entryDate <= endDate;
-    });
+    const monthEntries = getEntriesByMonth(year, month);
 
     const emotionDistribution: Record<Emotion, number> = {
       '행복': 0, '기쁨': 0, '뿌듯': 0, '편안': 0, '피곤': 0, '우울': 0
@@ -522,34 +477,34 @@ export const GratitudeDiary = () => {
                 </div>
               </div>
 
-                             <div className="flex gap-3 mt-6">
-                 <Button 
-                   onClick={handleSave}
-                   disabled={isLoading || !apiKey}
-                   variant="emotion"
-                   className="flex-1"
-                 >
-                   {isLoading ? (
-                     <>
-                       <Loader2 className="w-4 h-4 animate-spin" />
-                       저장 중...
-                     </>
-                   ) : (
-                     <>
-                       <CheckCircle className="w-4 h-4" />
-                       {existingEntry ? '수정하기' : '저장하기'}
-                     </>
-                   )}
-                 </Button>
-                 <Button onClick={resetForm} variant="outline">
-                   초기화
-                 </Button>
-                 {existingEntry && (
-                   <Button onClick={deleteEntry} variant="destructive">
-                     <Trash2 className="w-4 h-4" />
-                   </Button>
-                 )}
-               </div>
+              <div className="flex gap-3 mt-6">
+                <Button 
+                  onClick={handleSave}
+                  disabled={isLoading || entriesLoading || !apiKey}
+                  variant="emotion"
+                  className="flex-1"
+                >
+                  {(isLoading || entriesLoading) ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      저장 중...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      {existingEntry ? '수정하기' : '저장하기'}
+                    </>
+                  )}
+                </Button>
+                <Button onClick={resetForm} variant="outline">
+                  초기화
+                </Button>
+                {existingEntry && (
+                  <Button onClick={deleteEntry} variant="destructive">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
             </Card>
 
             {/* AI Summary */}
