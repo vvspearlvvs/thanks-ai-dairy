@@ -14,7 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      gratitude_entries: {
+      thanks_entries: {
         Row: {
           created_at: string
           date: string

@@ -30,7 +30,7 @@ export const useGratitudeEntries = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('gratitude_entries')
+        .from('thanks_entries')
         .select('*')
         .eq('user_id', user.id)
         .order('date', { ascending: false });
@@ -71,7 +71,7 @@ export const useGratitudeEntries = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('gratitude_entries')
+        .from('thanks_entries')
         .upsert({
           user_id: user.id,
           date: entryData.date,
@@ -140,7 +140,7 @@ export const useGratitudeEntries = () => {
     setLoading(true);
     try {
       const { error } = await supabase
-        .from('gratitude_entries')
+        .from('thanks_entries')
         .delete()
         .eq('user_id', user.id)
         .eq('date', date);
