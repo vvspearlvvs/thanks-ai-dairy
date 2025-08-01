@@ -7,7 +7,7 @@ import { Textarea } from './ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGratitudeEntries, type Emotion, type GratitudeEntry } from '@/hooks/useGratitudeEntries';
-import { Heart, Sparkles, Send, Key, CheckCircle, Loader2, Calendar, BarChart3, List, Plus, ArrowLeft, Trash2, LogOut, User } from 'lucide-react';
+import { Heart, Sparkles, Send, Key, CheckCircle, Loader2, Calendar, BarChart3, List, Plus, ArrowLeft, Trash2, LogOut, User, X } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -17,6 +17,12 @@ interface MonthlyReport {
   topEmotions: Emotion[];
   positiveRate: number;
   summary: string;
+}
+
+interface GratitudeItem {
+  id: string;
+  title: string;
+  inputs: string[];
 }
 
 const emotionConfig = {
@@ -40,13 +46,21 @@ export const GratitudeDiary = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('diary');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   
-  const [entry, setEntry] = useState<Omit<GratitudeEntry, 'id' | 'date' | 'createdAt' | 'user_id'>>({
-    self: '',
-    others: '',
-    situation: '',
+  const [entry, setEntry] = useState<{
+    emotion: Emotion;
+    summary: string;
+  }>({
     emotion: '행복',
     summary: ''
   });
+
+  // 동적 감사 항목 관리 - 각 항목마다 여러 입력창
+  const [gratitudeItems, setGratitudeItems] = useState<GratitudeItem[]>([
+    { id: '1', title: '나에 대한 감사', inputs: [''] },
+    { id: '2', title: '타인에 대한 감사', inputs: [''] },
+    { id: '3', title: '상황에 대한 감사', inputs: [''] }
+  ]);
+
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -66,12 +80,28 @@ export const GratitudeDiary = () => {
   useEffect(() => {
     if (existingEntry) {
       setEntry({
-        self: existingEntry.self,
-        others: existingEntry.others,
-        situation: existingEntry.situation,
         emotion: existingEntry.emotion,
         summary: existingEntry.summary || ''
       });
+      
+      // 기존 데이터를 동적 항목으로 변환
+      const defaultTitles = ['나에 대한 감사', '타인에 대한 감사', '상황에 대한 감사'];
+      const itemsWithData = existingEntry.items.map((item, index) => ({
+        id: (index + 1).toString(),
+        title: item.title || defaultTitles[index] || `감사한 일 ${index + 1}`,
+        inputs: [item.content]
+      }));
+
+      // 기본 3개 항목이 없으면 추가
+      while (itemsWithData.length < 3) {
+        itemsWithData.push({
+          id: (itemsWithData.length + 1).toString(),
+          title: defaultTitles[itemsWithData.length] || `감사한 일 ${itemsWithData.length + 1}`,
+          inputs: ['']
+        });
+      }
+
+      setGratitudeItems(itemsWithData);
     } else {
       resetForm();
     }
@@ -95,13 +125,61 @@ export const GratitudeDiary = () => {
     });
   };
 
-  const generateSummaryPrompt = (entry: Omit<GratitudeEntry, 'id' | 'date' | 'createdAt' | 'user_id'>, emotion: Emotion): string => {
+  // 특정 항목에 입력창 추가
+  const addInputToItem = (itemId: string) => {
+    setGratitudeItems(prev => 
+      prev.map(item => {
+        if (item.id === itemId && item.inputs.length < 4) {
+          return { ...item, inputs: [...item.inputs, ''] };
+        }
+        return item;
+      })
+    );
+  };
+
+  // 특정 항목에서 입력창 삭제
+  const removeInputFromItem = (itemId: string, inputIndex: number) => {
+    setGratitudeItems(prev => 
+      prev.map(item => {
+        if (item.id === itemId && item.inputs.length > 1) {
+          const newInputs = item.inputs.filter((_, index) => index !== inputIndex);
+          return { ...item, inputs: newInputs };
+        }
+        return item;
+      })
+    );
+  };
+
+  // 특정 항목의 특정 입력창 내용 업데이트
+  const updateItemInput = (itemId: string, inputIndex: number, content: string) => {
+    setGratitudeItems(prev => 
+      prev.map(item => {
+        if (item.id === itemId) {
+          const newInputs = [...item.inputs];
+          newInputs[inputIndex] = content;
+          return { ...item, inputs: newInputs };
+        }
+        return item;
+      })
+    );
+  };
+
+  const generateSummaryPrompt = (items: GratitudeItem[], emotion: Emotion): string => {
+    const itemsText = items.map((item, index) => {
+      const filledInputs = item.inputs.filter(input => input.trim());
+      if (filledInputs.length === 0) return null;
+      
+      const inputsText = filledInputs.map((input, inputIndex) => 
+        `  ${inputIndex + 1}. ${input}`
+      ).join('\n');
+      
+      return `- ${item.title}:\n${inputsText}`;
+    }).filter(Boolean).join('\n');
+
     return `당신은 감정에 섬세하게 반응하는 고급 감성 작가입니다.
 
-사용자는 하루 동안 다음 네 가지 정보를 기록했습니다:
-- 나에 대한 감사: "${entry.self}"
-- 타인에 대한 감사: "${entry.others}"
-- 상황에 대한 감사: "${entry.situation}"
+사용자는 하루 동안 다음 정보를 기록했습니다:
+${itemsText}
 - 감정: ${emotion} (하루의 전반적인 정서: 행복, 뿌듯, 기쁨, 편안, 피곤, 우울 중 하나)
 
 당신의 역할은 이 정보를 바탕으로, **사용자의 하루를 1문장(40자 내외)**으로 요약하는 것입니다.
@@ -123,8 +201,6 @@ export const GratitudeDiary = () => {
 번호나 기호 없이 한 줄로만 작성해줘.`;
   };
 
-
-
   const handleSave = async () => {
     if (!apiKey) {
       toast({
@@ -135,10 +211,15 @@ export const GratitudeDiary = () => {
       return;
     }
 
-    if (!entry.self.trim() || !entry.others.trim() || !entry.situation.trim()) {
+    // 각 항목에서 최소 하나의 입력이 있는지 확인
+    const hasValidInputs = gratitudeItems.every(item => 
+      item.inputs.some(input => input.trim())
+    );
+
+    if (!hasValidInputs) {
       toast({
         title: "모든 항목을 입력해주세요",
-        description: "감사한 일 3가지를 모두 작성해주세요.",
+        description: "각 항목에서 최소 하나의 감사한 일을 작성해주세요.",
         variant: "destructive"
       });
       return;
@@ -156,7 +237,7 @@ export const GratitudeDiary = () => {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: generateSummaryPrompt(entry, entry.emotion)
+              text: generateSummaryPrompt(gratitudeItems, entry.emotion)
             }]
           }]
         })
@@ -176,14 +257,23 @@ export const GratitudeDiary = () => {
       const summary = summaryText.trim();
       setEntry(prev => ({ ...prev, summary }));
 
-      // Supabase에 일기 저장
+      // 2. 감사 항목들을 데이터베이스 형식으로 변환
+      const itemsToSave = gratitudeItems.flatMap((item, itemIndex) =>
+        item.inputs
+          .filter(input => input.trim()) // 빈 입력 제외
+          .map((input, inputIndex) => ({
+            title: item.title,
+            content: input,
+            order_index: itemIndex * 10 + inputIndex // 순서 관리
+          }))
+      );
+
+      // 3. Supabase에 일기 저장
       const savedEntry = await saveEntry({
         date: selectedDate,
-        self: entry.self,
-        others: entry.others,
-        situation: entry.situation,
         emotion: entry.emotion,
-        summary
+        summary,
+        items: itemsToSave
       });
 
       if (savedEntry) {
@@ -202,16 +292,16 @@ export const GratitudeDiary = () => {
     }
   };
 
-
-
   const resetForm = () => {
     setEntry({
-      self: '',
-      others: '',
-      situation: '',
       emotion: '행복',
       summary: ''
     });
+    setGratitudeItems([
+      { id: '1', title: '나에 대한 감사', inputs: [''] },
+      { id: '2', title: '타인에 대한 감사', inputs: [''] },
+      { id: '3', title: '상황에 대한 감사', inputs: [''] }
+    ]);
   };
 
   const deleteEntry = async () => {
@@ -245,8 +335,6 @@ export const GratitudeDiary = () => {
       .sort(([,a], [,b]) => b - a)
       .slice(0, 3)
       .map(([emotion]) => emotion as Emotion);
-
-
 
     const summary = totalEntries > 0 
       ? `이번 달, 당신은 ${totalEntries}일의 감사일기를 기록했고, ${positiveRate}%의 날에 긍정적인 감정을 느꼈어요.`
@@ -418,63 +506,61 @@ export const GratitudeDiary = () => {
               </div>
             </Card>
 
-            {/* Gratitude Entries */}
+            {/* Dynamic Gratitude Entries */}
             <Card className="p-6 shadow-warm">
-              <Label className="text-lg font-semibold mb-6 block">오늘 감사한 일 3가지</Label>
+              <Label className="text-lg font-semibold mb-6 block">오늘 감사한 일들</Label>
+              
               <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="self" className="text-primary font-medium">
-                    1. 나에 대한 감사
-                  </Label>
-                  <Textarea
-                    id="self"
-                    placeholder="스스로에게 감사했던 일을 적어보세요... (50자 내외)"
-                    value={entry.self}
-                    onChange={(e) => setEntry(prev => ({ ...prev, self: e.target.value }))}
-                    className="transition-all duration-300 focus:shadow-soft resize-none"
-                    rows={2}
-                    maxLength={50}
-                  />
-                  <div className="text-right text-xs text-muted-foreground">
-                    {entry.self.length}/50
+                {gratitudeItems.map((item, itemIndex) => (
+                  <div key={item.id} className="space-y-3">
+                    <Label className="text-primary font-medium text-lg">
+                      {itemIndex + 1}. {item.title}
+                    </Label>
+                    
+                    <div className="space-y-3">
+                      {item.inputs.map((input, inputIndex) => (
+                        <div key={inputIndex} className="flex items-start gap-2">
+                          <div className="flex-1">
+                            <Input
+                              placeholder="감사했던 일을 한 줄로 적어보세요... (50자 내외)"
+                              value={input}
+                              onChange={(e) => updateItemInput(item.id, inputIndex, e.target.value)}
+                              className="transition-all duration-300 focus:shadow-soft"
+                              maxLength={50}
+                            />
+                            <div className="text-right text-xs text-muted-foreground mt-1">
+                              {input.length}/50
+                            </div>
+                          </div>
+                          
+                          {inputIndex === item.inputs.length - 1 && item.inputs.length < 4 && (
+                            <Button
+                              onClick={() => addInputToItem(item.id)}
+                              variant="outline"
+                              size="sm"
+                              className="h-10 w-10 p-0 flex-shrink-0"
+                              title="입력창 추가"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          )}
+                          
+                          {inputIndex > 0 && (
+                            <Button
+                              onClick={() => removeInputFromItem(item.id, inputIndex)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-10 w-10 p-0 text-muted-foreground hover:text-destructive flex-shrink-0"
+                              title="입력창 삭제"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="others" className="text-primary font-medium">
-                    2. 타인에 대한 감사
-                  </Label>
-                  <Textarea
-                    id="others"
-                    placeholder="다른 사람에게 감사했던 일을 적어보세요... (50자 내외)"
-                    value={entry.others}
-                    onChange={(e) => setEntry(prev => ({ ...prev, others: e.target.value }))}
-                    className="transition-all duration-300 focus:shadow-soft resize-none"
-                    rows={2}
-                    maxLength={50}
-                  />
-                  <div className="text-right text-xs text-muted-foreground">
-                    {entry.others.length}/50
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="situation" className="text-primary font-medium">
-                    3. 상황에 대한 감사
-                  </Label>
-                  <Textarea
-                    id="situation"
-                    placeholder="상황이나 환경에 감사했던 일을 적어보세요... (50자 내외)"
-                    value={entry.situation}
-                    onChange={(e) => setEntry(prev => ({ ...prev, situation: e.target.value }))}
-                    className="transition-all duration-300 focus:shadow-soft resize-none"
-                    rows={2}
-                    maxLength={50}
-                  />
-                  <div className="text-right text-xs text-muted-foreground">
-                    {entry.situation.length}/50
-                  </div>
-                </div>
+                ))}
               </div>
 
               <div className="flex gap-3 mt-6">
@@ -523,8 +609,6 @@ export const GratitudeDiary = () => {
                 </div>
               </Card>
             )}
-
-
           </>
         )}
 
@@ -538,17 +622,17 @@ export const GratitudeDiary = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                                 {entries
-                   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                   .map((entry) => (
-                     <div 
-                       key={entry.id} 
-                       className="p-4 border rounded-lg hover:shadow-soft transition-all cursor-pointer"
-                       onClick={() => {
-                         setSelectedDate(entry.date);
-                         setViewMode('diary');
-                       }}
-                     >
+                {entries
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .map((entry) => (
+                    <div 
+                      key={entry.id} 
+                      className="p-4 border rounded-lg hover:shadow-soft transition-all cursor-pointer"
+                      onClick={() => {
+                        setSelectedDate(entry.date);
+                        setViewMode('diary');
+                      }}
+                    >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">{emotionConfig[entry.emotion].icon}</span>
@@ -564,9 +648,9 @@ export const GratitudeDiary = () => {
                         </div>
                       ) : (
                         <div className="space-y-1 text-sm">
-                          <p><strong>나:</strong> {entry.self}</p>
-                          <p><strong>타인:</strong> {entry.others}</p>
-                          <p><strong>상황:</strong> {entry.situation}</p>
+                          {entry.items.map((item, index) => (
+                            <p key={index}><strong>{item.title}:</strong> {item.content}</p>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -600,8 +684,6 @@ export const GratitudeDiary = () => {
                   <p className="text-foreground font-medium">{monthlyReport.summary}</p>
                 </div>
 
-
-
                 {/* Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="text-center p-4 bg-card rounded-lg border">
@@ -626,36 +708,34 @@ export const GratitudeDiary = () => {
                   </div>
                 </div>
 
-                                 {/* Emotion Distribution */}
-                 <div>
-                   <Label className="text-lg font-semibold mb-4 block">감정 분포</Label>
-                   <div className="space-y-2">
-                     {(Object.keys(emotionConfig) as Emotion[]).map((emotion) => {
-                       const count = monthlyReport.emotionDistribution[emotion];
-                       const percentage = monthlyReport.totalEntries > 0 
-                         ? Math.round((count / monthlyReport.totalEntries) * 100) 
-                         : 0;
-                       
-                       return (
-                         <div key={emotion} className="flex items-center gap-3">
-                           <span className="text-2xl">{emotionConfig[emotion].icon}</span>
-                           <span className="flex-1 font-medium">{emotion}</span>
-                           <div className="flex-1 bg-muted rounded-full h-2">
-                             <div 
-                               className="bg-primary h-2 rounded-full transition-all duration-300"
-                               style={{ width: `${percentage}%` }}
-                             />
-                           </div>
-                           <span className="text-sm text-muted-foreground w-12 text-right">
-                             {count}일
-                           </span>
-                         </div>
-                       );
-                     })}
-                   </div>
-                 </div>
-
-
+                {/* Emotion Distribution */}
+                <div>
+                  <Label className="text-lg font-semibold mb-4 block">감정 분포</Label>
+                  <div className="space-y-2">
+                    {(Object.keys(emotionConfig) as Emotion[]).map((emotion) => {
+                      const count = monthlyReport.emotionDistribution[emotion];
+                      const percentage = monthlyReport.totalEntries > 0 
+                        ? Math.round((count / monthlyReport.totalEntries) * 100) 
+                        : 0;
+                      
+                      return (
+                        <div key={emotion} className="flex items-center gap-3">
+                          <span className="text-2xl">{emotionConfig[emotion].icon}</span>
+                          <span className="flex-1 font-medium">{emotion}</span>
+                          <div className="flex-1 bg-muted rounded-full h-2">
+                            <div 
+                              className="bg-primary h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-muted-foreground w-12 text-right">
+                            {count}일
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </Card>

@@ -20,8 +20,8 @@ export type Database = {
           date: string
           emotion: string
           id: string
-          others: string
           self: string
+          others: string
           situation: string
           summary: string
           updated_at: string
@@ -32,8 +32,8 @@ export type Database = {
           date: string
           emotion: string
           id?: string
-          others: string
           self: string
+          others: string
           situation: string
           summary?: string
           updated_at?: string
@@ -44,14 +44,60 @@ export type Database = {
           date?: string
           emotion?: string
           id?: string
-          others?: string
           self?: string
+          others?: string
           situation?: string
           summary?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "thanks_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      thanks_items: {
+        Row: {
+          id: string
+          entry_id: string
+          title: string
+          content: string
+          order_index: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          entry_id: string
+          title: string
+          content: string
+          order_index: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          entry_id?: string
+          title?: string
+          content?: string
+          order_index?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thanks_items_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "thanks_entries"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {

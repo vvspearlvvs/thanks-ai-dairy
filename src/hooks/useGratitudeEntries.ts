@@ -5,16 +5,21 @@ import { useToast } from '@/hooks/use-toast';
 
 export type Emotion = '행복' | '기쁨' | '뿌듯' | '편안' | '피곤' | '우울';
 
+export interface GratitudeItem {
+  id: string;
+  title: string;
+  content: string;
+  order_index: number;
+}
+
 export interface GratitudeEntry {
   id: string;
   date: string;
-  self: string;
-  others: string;
-  situation: string;
   emotion: Emotion;
   summary: string;
   createdAt: string;
   user_id: string;
+  items: GratitudeItem[];
 }
 
 export const useGratitudeEntries = () => {
@@ -23,35 +28,51 @@ export const useGratitudeEntries = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // 일기 목록 조회
+  // 일기 목록 조회 (감사 항목 포함)
   const fetchEntries = async () => {
     if (!user) return;
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // 먼저 감사 일기 엔트리들을 조회
+      const { data: entriesData, error: entriesError } = await supabase
         .from('thanks_entries')
         .select('*')
         .eq('user_id', user.id)
         .order('date', { ascending: false });
 
-      if (error) {
-        throw error;
+      if (entriesError) {
+        throw entriesError;
       }
 
-      const formattedEntries: GratitudeEntry[] = data.map(entry => ({
-        id: entry.id,
-        date: entry.date,
-        self: entry.self,
-        others: entry.others,
-        situation: entry.situation,
-        emotion: entry.emotion as Emotion,
-        summary: entry.summary,
-        createdAt: entry.created_at,
-        user_id: entry.user_id
-      }));
+      // 각 엔트리에 대한 감사 항목들을 조회
+      const entriesWithItems = await Promise.all(
+        entriesData.map(async (entry) => {
+          const { data: itemsData, error: itemsError } = await supabase
+            .from('thanks_items')
+            .select('*')
+            .eq('entry_id', entry.id)
+            .order('order_index', { ascending: true });
 
-      setEntries(formattedEntries);
+          if (itemsError) {
+            console.error('Error fetching items:', itemsError);
+            return null;
+          }
+
+          return {
+            id: entry.id,
+            date: entry.date,
+            emotion: entry.emotion as Emotion,
+            summary: entry.summary,
+            createdAt: entry.created_at,
+            user_id: entry.user_id,
+            items: itemsData || []
+          };
+        })
+      );
+
+      const validEntries = entriesWithItems.filter(Boolean) as GratitudeEntry[];
+      setEntries(validEntries);
     } catch (error) {
       console.error('Error fetching entries:', error);
       toast({
@@ -65,19 +86,22 @@ export const useGratitudeEntries = () => {
   };
 
   // 일기 저장 (새로 생성 또는 업데이트)
-  const saveEntry = async (entryData: Omit<GratitudeEntry, 'id' | 'createdAt' | 'user_id'>) => {
+  const saveEntry = async (entryData: {
+    date: string;
+    emotion: Emotion;
+    summary: string;
+    items: { title: string; content: string; order_index: number }[];
+  }) => {
     if (!user) return null;
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // 1. 감사 일기 엔트리 저장/업데이트
+      const { data: savedEntry, error: entryError } = await supabase
         .from('thanks_entries')
         .upsert({
           user_id: user.id,
           date: entryData.date,
-          self: entryData.self,
-          others: entryData.others,
-          situation: entryData.situation,
           emotion: entryData.emotion,
           summary: entryData.summary
         }, {
@@ -86,20 +110,57 @@ export const useGratitudeEntries = () => {
         .select()
         .single();
 
-      if (error) {
-        throw error;
+      if (entryError) {
+        throw entryError;
+      }
+
+      // 2. 기존 감사 항목들 삭제
+      const { error: deleteError } = await supabase
+        .from('thanks_items')
+        .delete()
+        .eq('entry_id', savedEntry.id);
+
+      if (deleteError) {
+        console.error('Error deleting existing items:', deleteError);
+      }
+
+      // 3. 새로운 감사 항목들 저장
+      if (entryData.items.length > 0) {
+        const itemsToInsert = entryData.items.map(item => ({
+          entry_id: savedEntry.id,
+          title: item.title,
+          content: item.content,
+          order_index: item.order_index
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('thanks_items')
+          .insert(itemsToInsert);
+
+        if (itemsError) {
+          throw itemsError;
+        }
+      }
+
+      // 4. 저장된 데이터 조회
+      const { data: savedItems, error: itemsError } = await supabase
+        .from('thanks_items')
+        .select('*')
+        .eq('entry_id', savedEntry.id)
+        .order('order_index', { ascending: true });
+
+      if (itemsError) {
+        throw itemsError;
       }
 
       const formattedEntry: GratitudeEntry = {
-        id: data.id,
-        date: data.date,
-        self: data.self,
-        others: data.others,
-        situation: data.situation,
-        emotion: data.emotion as Emotion,
-        summary: data.summary,
-        createdAt: data.created_at,
-        user_id: data.user_id
+        id: savedEntry.id,
+        date: savedEntry.date,
+        emotion: savedEntry.emotion as Emotion,
+        summary: savedEntry.summary,
+        createdAt: savedEntry.created_at,
+        user_id: savedEntry.user_id,
+        items: savedItems || []
       };
 
       // 로컬 상태 업데이트

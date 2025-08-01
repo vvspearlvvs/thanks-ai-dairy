@@ -91,8 +91,8 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-8">
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center pb-8">
-          <CardTitle className="text-4xl font-bold text-primary mb-4">감사회고(with AI 한줄 일기)</CardTitle>
-          <CardDescription className="text-lg">Sign in to your account or create a new one</CardDescription>
+          <CardTitle className="text-4xl font-bold text-primary mb-4">감사 회고 (with AI 한줄 일기)</CardTitle>
+          <CardDescription className="text-lg">환영합니다! 로그인 또는 회원가입을 해주세요.</CardDescription>
         </CardHeader>
         <CardContent className="px-8 pb-8">
           <Tabs defaultValue="signin" className="w-full">
