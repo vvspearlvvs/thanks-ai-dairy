@@ -9,8 +9,9 @@ import { useGratitudeEntries, type Emotion, type GratitudeEntry } from '@/hooks/
 import { Heart, Sparkles, Send, Key, CheckCircle, Loader2, Calendar, BarChart3, List, Plus, ArrowLeft, Trash2 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { geminiService, type GratitudeItem } from '@/services/geminiService';
 
-interface GratitudeItem {
+interface GratitudeItemState {
   id: string;
   title: string;
   inputs: string[];
@@ -22,7 +23,7 @@ const emotionConfig = {
   '뿌듯': { color: 'proud', icon: '😄', theme: 'success' },
   '편안': { color: 'calm', icon: '😉', theme: 'calm' },
   '피곤': { color: 'tired', icon: '😴', theme: 'neutral' },
-  '우울': { color: 'sad', icon: '😢', theme: 'melancholy' }
+  '우울': { color: 'sad', icon: '��', theme: 'melancholy' }
 };
 
 type ViewMode = 'diary' | 'list' | 'report';
@@ -36,6 +37,7 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [viewMode, setViewMode] = useState<ViewMode>('diary');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   
   const [entry, setEntry] = useState<{
     emotion: Emotion;
@@ -46,7 +48,7 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
   });
 
   // 동적 감사 항목 관리 - 각 항목마다 여러 입력창
-  const [gratitudeItems, setGratitudeItems] = useState<GratitudeItem[]>([
+  const [gratitudeItems, setGratitudeItems] = useState<GratitudeItemState[]>([
     { id: '1', title: '멋진 오늘도 잘했어, 나!!', inputs: [''] },
     { id: '2', title: '타인 덕분에 빛난 하루해!', inputs: [''] },
     { id: '3', title: '이런 상황까지 고마워해!', inputs: [''] }
@@ -96,6 +98,40 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
       ]);
     }
   }, [selectedDate, existingEntry]);
+
+  const handleGenerateSummary = async () => {
+    if (!geminiService.isApiKeySet()) {
+      alert('GEMINI_API_KEY가 환경변수에 설정되지 않았습니다. .env 파일을 확인해주세요.');
+      return;
+    }
+
+    const itemsToProcess = gratitudeItems
+      .filter(item => item.inputs.some(input => input.trim()))
+      .map(item => ({
+        title: item.title,
+        content: item.inputs.filter(input => input.trim()).join('\n')
+      }));
+
+    if (itemsToProcess.length === 0) {
+      alert('감사한 일을 먼저 입력해주세요.');
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+    try {
+      const summary = await geminiService.generateSummary({
+        emotion: entry.emotion,
+        items: itemsToProcess
+      });
+      
+      setEntry(prev => ({ ...prev, summary }));
+    } catch (error) {
+      console.error('요약 생성 실패:', error);
+      alert('요약 생성에 실패했습니다. API 키를 확인해주세요.');
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!entry.summary.trim()) {
@@ -216,17 +252,6 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
             </div>
           </Card>
 
-          {/* 요약 입력 */}
-          <Card className="p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">오늘의 요약</h2>
-            <Textarea
-              value={entry.summary}
-              onChange={(e) => setEntry(prev => ({ ...prev, summary: e.target.value }))}
-              placeholder="오늘 하루를 요약해보세요..."
-              className="min-h-[100px]"
-            />
-          </Card>
-
           {/* 감사 항목들 */}
           <Card className="p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4">감사한 것들</h2>
@@ -238,7 +263,7 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
                     <Textarea
                       value={input}
                       onChange={(e) => updateInput(item.id, inputIndex, e.target.value)}
-                      placeholder={`${item.title}에 대해 작성해보세요...`}
+                      placeholder={'오늘 감사했던 일에 대해 작성해보세요.'}
                       className="flex-1 min-h-[60px]"
                     />
                     {item.inputs.length > 1 && (
@@ -263,6 +288,42 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
                 </Button>
               </div>
             ))}
+          </Card>
+
+          {/* 요약 입력 및 생성 */}
+          <Card className="p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">오늘의 요약</h2>
+              <Button
+                onClick={handleGenerateSummary}
+                disabled={isGeneratingSummary}
+                variant="outline"
+                className="px-4"
+              >
+                {isGeneratingSummary ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    생성 중...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    AI 요약 생성
+                  </>
+                )}
+              </Button>
+            </div>
+            <Textarea
+              value={entry.summary}
+              onChange={(e) => setEntry(prev => ({ ...prev, summary: e.target.value }))}
+              placeholder="오늘 하루를 요약해보세요... (AI 요약 생성 버튼을 눌러보세요!)"
+              className="min-h-[100px]"
+            />
+            {!geminiService.isApiKeySet() && (
+              <p className="text-sm text-red-500 mt-2">
+                ⚠️ GEMINI_API_KEY가 환경변수에 설정되지 않았습니다. .env 파일을 확인해주세요.
+              </p>
+            )}
           </Card>
 
           {/* 저장/삭제 버튼 */}
