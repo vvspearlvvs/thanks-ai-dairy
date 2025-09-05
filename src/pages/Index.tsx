@@ -1,7 +1,7 @@
-import { GratitudeDiary } from "@/components/GratitudeDiary";
+import { DiaryApp } from "@/components/DiaryApp";
 
 const Index = () => {
-  return <GratitudeDiary />;
+  return <DiaryApp />;
 };
 
 export default Index;

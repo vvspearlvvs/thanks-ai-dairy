@@ -10,14 +10,6 @@ import { Heart, Sparkles, Send, Key, CheckCircle, Loader2, Calendar, BarChart3, 
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
-interface MonthlyReport {
-  totalEntries: number;
-  emotionDistribution: Record<Emotion, number>;
-  topEmotions: Emotion[];
-  positiveRate: number;
-  summary: string;
-}
-
 interface GratitudeItem {
   id: string;
   title: string;
@@ -35,7 +27,11 @@ const emotionConfig = {
 
 type ViewMode = 'diary' | 'list' | 'report';
 
-export const GratitudeDiary = () => {
+interface GratitudeDiaryProps {
+  onShowList: () => void;
+}
+
+export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
   const { entries, loading: entriesLoading, saveEntry, deleteEntry: deleteEntryFromDB, getEntryByDate, getEntriesByMonth } = useGratitudeEntries();
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [viewMode, setViewMode] = useState<ViewMode>('diary');
@@ -117,9 +113,7 @@ export const GratitudeDiary = () => {
         }));
 
       await saveEntry(selectedDate, entry.emotion, entry.summary, itemsToSave);
-      alert('감사 일기가 저장되었습니다!');
     } catch (error) {
-      alert('저장 중 오류가 발생했습니다.');
       console.error('Save error:', error);
     } finally {
       setIsLoading(false);
@@ -132,9 +126,8 @@ export const GratitudeDiary = () => {
     if (confirm('이 날짜의 일기를 삭제하시겠습니까?')) {
       try {
         await deleteEntryFromDB(existingEntry.id);
-        alert('일기가 삭제되었습니다.');
       } catch (error) {
-        alert('삭제 중 오류가 발생했습니다.');
+        console.error('Delete error:', error);
       }
     }
   };
@@ -191,6 +184,13 @@ export const GratitudeDiary = () => {
         <div className="max-w-4xl mx-auto">
           {/* 헤더 */}
           <div className="text-center mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <Button variant="outline" onClick={onShowList}>
+                <List className="h-4 w-4 mr-2" />
+                목록 보기
+              </Button>
+              <div className="flex-1"></div>
+            </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">감사 일기</h1>
             <p className="text-lg text-gray-600 mb-4">
               {format(new Date(selectedDate), 'yyyy년 MM월 dd일 EEEE', { locale: ko })}

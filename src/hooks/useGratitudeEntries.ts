@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export type Emotion = '행복' | '기쁨' | '뿌듯' | '편안' | '피곤' | '우울';
@@ -16,7 +15,7 @@ export interface GratitudeEntry {
   date: string;
   emotion: Emotion;
   summary: string;
-  createdAt: string;
+  created_at: string;
   items: GratitudeItem[];
 }
 
@@ -30,7 +29,7 @@ export const useGratitudeEntries = () => {
     loadEntries();
   }, []);
 
-  const loadEntries = () => {
+  const loadEntries = useCallback(() => {
     try {
       const stored = localStorage.getItem('gratitude-entries');
       if (stored) {
@@ -38,10 +37,15 @@ export const useGratitudeEntries = () => {
       }
     } catch (error) {
       console.error('Error loading entries:', error);
+      toast({
+        title: "오류",
+        description: "데이터를 불러오는 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
     }
-  };
+  }, [toast]);
 
-  const saveEntries = (newEntries: GratitudeEntry[]) => {
+  const saveEntries = useCallback((newEntries: GratitudeEntry[]) => {
     try {
       localStorage.setItem('gratitude-entries', JSON.stringify(newEntries));
       setEntries(newEntries);
@@ -53,9 +57,14 @@ export const useGratitudeEntries = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
-  const saveEntry = async (date: string, emotion: Emotion, summary: string, items: Omit<GratitudeItem, 'id' | 'order_index'>[]) => {
+  const saveEntry = useCallback(async (
+    date: string,
+    emotion: Emotion,
+    summary: string,
+    items: Omit<GratitudeItem, 'id' | 'order_index'>[]
+  ) => {
     setLoading(true);
     try {
       const newEntry: GratitudeEntry = {
@@ -63,7 +72,7 @@ export const useGratitudeEntries = () => {
         date,
         emotion,
         summary,
-        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
         items: items.map((item, index) => ({
           ...item,
           id: `${Date.now()}-${index}`,
@@ -96,9 +105,9 @@ export const useGratitudeEntries = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [entries, saveEntries, toast]);
 
-  const deleteEntry = async (entryId: string) => {
+  const deleteEntry = useCallback(async (entryId: string) => {
     try {
       const newEntries = entries.filter(entry => entry.id !== entryId);
       saveEntries(newEntries);
@@ -114,15 +123,15 @@ export const useGratitudeEntries = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [entries, saveEntries, toast]);
 
-  const getEntryByDate = (date: string) => {
+  const getEntryByDate = useCallback((date: string) => {
     return entries.find(entry => entry.date === date);
-  };
+  }, [entries]);
 
-  const getEntriesByMonth = (yearMonth: string) => {
+  const getEntriesByMonth = useCallback((yearMonth: string) => {
     return entries.filter(entry => entry.date.startsWith(yearMonth));
-  };
+  }, [entries]);
 
   return {
     entries,
