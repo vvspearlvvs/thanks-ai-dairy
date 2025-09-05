@@ -33,17 +33,15 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
   
   const [entry, setEntry] = useState<{
     emotion: Emotion;
-    summary: string;
   }>({
-    emotion: '행복',
-    summary: ''
+    emotion: '행복'
   });
 
   // 동적 감사 항목 관리
   const [gratitudeItems, setGratitudeItems] = useState<GratitudeItemInput[]>([
-    { id: '1', title: '나에 대한 감사', inputs: [''] },
-    { id: '2', title: '타인에 대한 감사', inputs: [''] },
-    { id: '3', title: '상황에 대한 감사', inputs: [''] }
+    { id: '1', title: '오늘도 잘했어, 나!', inputs: [''] },
+    { id: '2', title: '타인 덕분에 빛난 하루', inputs: [''] },
+    { id: '3', title: '이런 상황까지 고마워', inputs: [''] }
   ]);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -55,12 +53,11 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
   useEffect(() => {
     if (existingEntry) {
       setEntry({
-        emotion: existingEntry.emotion,
-        summary: existingEntry.summary || ''
+        emotion: existingEntry.emotion
       });
       
       // 기존 데이터를 동적 항목으로 변환
-      const defaultTitles = ['나에 대한 감사', '타인에 대한 감사', '상황에 대한 감사'];
+      const defaultTitles = ['오늘도 잘했어, 나!', '타인 덕분에 빛난 하루', '이런 상황까지 고마워'];
       const itemsWithData = existingEntry.items.map((item, index) => ({
         id: (index + 1).toString(),
         title: item.title || defaultTitles[index] || `감사한 일 ${index + 1}`,
@@ -80,20 +77,24 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
     } else {
       // 새 일기인 경우 기본값으로 초기화
       setEntry({
-        emotion: '행복',
-        summary: ''
+        emotion: '행복'
       });
       setGratitudeItems([
-        { id: '1', title: '나에 대한 감사', inputs: [''] },
-        { id: '2', title: '타인에 대한 감사', inputs: [''] },
-        { id: '3', title: '상황에 대한 감사', inputs: [''] }
+        { id: '1', title: '오늘도 잘했어, 나!', inputs: [''] },
+        { id: '2', title: '타인 덕분에 빛난 하루', inputs: [''] },
+        { id: '3', title: '이런 상황까지 고마워', inputs: [''] }
       ]);
     }
   }, [selectedDate, existingEntry]);
 
   const handleSave = async () => {
-    if (!entry.summary.trim()) {
-      Alert.alert('알림', '요약을 입력해주세요.');
+    // 감사 항목이 하나라도 입력되었는지 확인
+    const hasContent = gratitudeItems.some(item => 
+      item.inputs.some(input => input.trim())
+    );
+
+    if (!hasContent) {
+      Alert.alert('알림', '감사한 내용을 하나 이상 입력해주세요.');
       return;
     }
 
@@ -106,7 +107,10 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
           content: item.inputs.filter(input => input.trim()).join('\n')
         }));
 
-      await saveEntry(selectedDate, entry.emotion, entry.summary, itemsToSave);
+      // 요약을 자동으로 생성 (감사 항목들의 제목을 조합)
+      const summary = itemsToSave.map(item => item.title).join(', ');
+
+      await saveEntry(selectedDate, entry.emotion, summary, itemsToSave);
       Alert.alert('성공', '감사 일기가 저장되었습니다!');
     } catch (error) {
       Alert.alert('오류', '저장 중 오류가 발생했습니다.');
@@ -190,17 +194,18 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
         {/* 헤더 */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.listButton} onPress={onShowList}>
-            <Text style={styles.listButtonText}>📋 목록 보기</Text>
+            <Text style={styles.listButtonText}>📋 목록</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>감사 일기</Text>
-          <Text style={styles.date}>
-            {format(new Date(selectedDate), 'yyyy년 MM월 dd일 EEEE', { locale: ko })}
-          </Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.date}>
+              {format(new Date(selectedDate), 'yyyy년 MM월 dd일 EEEE', { locale: ko })}
+            </Text>
+          </View>
         </View>
 
         {/* 감정 선택 */}
         <View style={styles.emotionSection}>
-          <Text style={styles.sectionTitle}>오늘의 감정</Text>
+          <Text style={styles.sectionTitle}>오늘 기분은 어땠어?</Text>
           <View style={styles.emotionGrid}>
             {(Object.keys(emotionConfig) as Emotion[]).map((emotion) => (
               <TouchableOpacity
@@ -223,22 +228,8 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
           </View>
         </View>
 
-        {/* 요약 입력 */}
-        <View style={styles.summarySection}>
-          <Text style={styles.sectionTitle}>오늘의 요약</Text>
-          <TextInput
-            style={styles.summaryInput}
-            value={entry.summary}
-            onChangeText={(text) => setEntry(prev => ({ ...prev, summary: text }))}
-            placeholder="오늘 하루를 요약해보세요..."
-            multiline
-            numberOfLines={3}
-          />
-        </View>
-
         {/* 감사 항목들 */}
         <View style={styles.itemsSection}>
-          <Text style={styles.sectionTitle}>감사한 것들</Text>
           {gratitudeItems.map((item) => (
             <View key={item.id} style={styles.itemContainer}>
               <Text style={styles.itemTitle}>{item.title}</Text>
@@ -248,7 +239,7 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
                     style={styles.itemInput}
                     value={input}
                     onChangeText={(text) => updateInput(item.id, inputIndex, text)}
-                    placeholder={`${item.title}에 대해 작성해보세요...`}
+                    placeholder={'오늘 감사했던 일에 대해 작성해보세요.'}
                     multiline
                   />
                   {item.inputs.length > 1 && (
@@ -306,171 +297,197 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 30,
   },
   listButton: {
     backgroundColor: '#4ECDC4',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+    marginBottom: 20,
+    shadowColor: '#4ECDC4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   listButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
+  titleContainer: {
+    alignItems: 'center',
+  },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#2c3e50',
     marginBottom: 8,
   },
   date: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#7f8c8d',
+    fontWeight: '500',
   },
   emotionSection: {
-    marginBottom: 24,
+    marginBottom: 30,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#2c3e50',
-    marginBottom: 12,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   emotionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 12,
   },
   emotionButton: {
     width: '30%',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     backgroundColor: 'white',
-    borderRadius: 12,
-    marginBottom: 8,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: '#e9ecef',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   emotionButtonSelected: {
     borderColor: '#4ECDC4',
     backgroundColor: '#f0fdfa',
+    transform: [{ scale: 1.05 }],
   },
   emotionIcon: {
-    fontSize: 24,
-    marginBottom: 4,
+    fontSize: 28,
+    marginBottom: 8,
   },
   emotionText: {
     fontSize: 14,
     color: '#6c757d',
     textAlign: 'center',
+    fontWeight: '600',
   },
   emotionTextSelected: {
     color: '#4ECDC4',
-    fontWeight: '600',
-  },
-  summarySection: {
-    marginBottom: 24,
-  },
-  summaryInput: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    textAlignVertical: 'top',
-    minHeight: 80,
+    fontWeight: '700',
   },
   itemsSection: {
-    marginBottom: 24,
+    marginBottom: 30,
   },
   itemContainer: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#e9ecef',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   itemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#2c3e50',
-    marginBottom: 12,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   itemInput: {
     flex: 1,
     backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
     borderWidth: 1,
     borderColor: '#e9ecef',
-    marginRight: 8,
+    marginRight: 12,
     textAlignVertical: 'top',
-    minHeight: 60,
+    minHeight: 80,
+    fontWeight: '500',
   },
   removeButton: {
     backgroundColor: '#ff6b6b',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
   removeButtonText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
   addButton: {
     backgroundColor: '#4ECDC4',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignSelf: 'center',
     marginTop: 8,
+    shadowColor: '#4ECDC4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   addButtonText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   buttonContainer: {
-    gap: 12,
-    marginBottom: 32,
+    gap: 16,
+    marginBottom: 40,
   },
   saveButton: {
     backgroundColor: '#4ECDC4',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
+    shadowColor: '#4ECDC4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   saveButtonText: {
     color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
   },
   deleteButton: {
     backgroundColor: '#ff6b6b',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
+    shadowColor: '#ff6b6b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   deleteButtonText: {
     color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
   },
   disabledButton: {
     opacity: 0.6,

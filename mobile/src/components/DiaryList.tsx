@@ -77,7 +77,7 @@ export const DiaryList = ({ onBack, onEdit }: DiaryListProps) => {
       </View>
       
       <Text style={styles.entrySummary} numberOfLines={2}>
-        {item.summary}
+        {item.summary || '감사한 내용이 저장되었습니다'}
       </Text>
       
       <View style={styles.entryFooter}>
@@ -121,7 +121,7 @@ export const DiaryList = ({ onBack, onEdit }: DiaryListProps) => {
           </View>
           
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>��</Text>
+            <Text style={styles.emptyIcon}>💝</Text>
             <Text style={styles.emptyTitle}>아직 작성된 일기가 없습니다</Text>
             <Text style={styles.emptySubtitle}>첫 번째 감사 일기를 작성해보세요!</Text>
             <TouchableOpacity style={styles.emptyButton} onPress={onBack}>
@@ -172,9 +172,6 @@ export const DiaryList = ({ onBack, onEdit }: DiaryListProps) => {
             </View>
 
             <View style={styles.detailContent}>
-              <Text style={styles.detailSectionTitle}>오늘의 요약</Text>
-              <Text style={styles.detailSummary}>{selectedEntry.summary}</Text>
-
               <Text style={styles.detailSectionTitle}>감사한 것들</Text>
               {selectedEntry.items.map((item, index) => (
                 <View key={index} style={styles.detailItem}>
@@ -221,39 +218,44 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   backButton: {
     backgroundColor: '#4ECDC4',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    marginRight: 16,
+    shadowColor: '#4ECDC4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   backButtonText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#2c3e50',
     flex: 1,
   },
   countBadge: {
     backgroundColor: '#e9ecef',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   countText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#6c757d',
     fontWeight: '600',
   },
@@ -262,9 +264,9 @@ const styles = StyleSheet.create({
   },
   entryCard: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -272,7 +274,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   entryHeader: {
-    marginBottom: 8,
+    marginBottom: 12,
   },
   entryInfo: {
     flexDirection: 'row',
@@ -280,26 +282,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   entryDate: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#2c3e50',
     flex: 1,
   },
   emotionBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   emotionText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
     color: 'white',
   },
   entrySummary: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#6c757d',
-    marginBottom: 12,
-    lineHeight: 20,
+    marginBottom: 16,
+    lineHeight: 22,
+    fontWeight: '500',
   },
   entryFooter: {
     flexDirection: 'row',
@@ -307,8 +310,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   entryMeta: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#adb5bd',
+    fontWeight: '500',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -316,12 +320,12 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     backgroundColor: '#f8f9fa',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   actionButtonText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#495057',
     fontWeight: '600',
   },
@@ -338,35 +342,41 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+    fontSize: 80,
+    marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#6c757d',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   emptySubtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#adb5bd',
-    marginBottom: 24,
+    marginBottom: 32,
+    textAlign: 'center',
   },
   emptyButton: {
     backgroundColor: '#4ECDC4',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 20,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 25,
+    shadowColor: '#4ECDC4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   emptyButtonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
   },
   detailCard: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -374,61 +384,54 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   detailHeader: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   detailDate: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#2c3e50',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   detailActions: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
+    gap: 16,
+    marginBottom: 24,
   },
   detailActionButton: {
     backgroundColor: '#f8f9fa',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
   detailActionButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#495057',
     fontWeight: '600',
   },
   detailContent: {
-    gap: 16,
+    gap: 20,
   },
   detailSectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#2c3e50',
-    marginBottom: 8,
-  },
-  detailSummary: {
-    fontSize: 16,
-    color: '#495057',
-    lineHeight: 24,
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 8,
+    marginBottom: 12,
   },
   detailItem: {
     backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 8,
+    padding: 20,
+    borderRadius: 12,
   },
   detailItemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#2c3e50',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   detailItemContent: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#495057',
-    lineHeight: 20,
+    lineHeight: 24,
+    fontWeight: '500',
   },
 });

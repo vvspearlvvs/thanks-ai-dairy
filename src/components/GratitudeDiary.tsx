@@ -47,9 +47,9 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
 
   // 동적 감사 항목 관리 - 각 항목마다 여러 입력창
   const [gratitudeItems, setGratitudeItems] = useState<GratitudeItem[]>([
-    { id: '1', title: '나에 대한 감사', inputs: [''] },
-    { id: '2', title: '타인에 대한 감사', inputs: [''] },
-    { id: '3', title: '상황에 대한 감사', inputs: [''] }
+    { id: '1', title: '멋진 오늘도 잘했어, 나!!', inputs: [''] },
+    { id: '2', title: '타인 덕분에 빛난 하루해!', inputs: [''] },
+    { id: '3', title: '이런 상황까지 고마워해!', inputs: [''] }
   ]);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -66,7 +66,7 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
       });
       
       // 기존 데이터를 동적 항목으로 변환
-      const defaultTitles = ['나에 대한 감사', '타인에 대한 감사', '상황에 대한 감사'];
+      const defaultTitles = ['오늘도 잘했어, 나!', '타인 덕분에 빛난 하루', '이런 상황까지 고마워'];
       const itemsWithData = existingEntry.items.map((item, index) => ({
         id: (index + 1).toString(),
         title: item.title || defaultTitles[index] || `감사한 일 ${index + 1}`,
@@ -90,9 +90,9 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
         summary: ''
       });
       setGratitudeItems([
-        { id: '1', title: '나에 대한 감사', inputs: [''] },
-        { id: '2', title: '타인에 대한 감사', inputs: [''] },
-        { id: '3', title: '상황에 대한 감사', inputs: [''] }
+        { id: '1', title: '오늘도 잘했어, 나!', inputs: [''] },
+        { id: '2', title: '타인 덕분에 빛난 하루', inputs: [''] },
+        { id: '3', title: '이런 상황까지 고마워', inputs: [''] }
       ]);
     }
   }, [selectedDate, existingEntry]);
@@ -191,7 +191,6 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
               </Button>
               <div className="flex-1"></div>
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">감사 일기</h1>
             <p className="text-lg text-gray-600 mb-4">
               {format(new Date(selectedDate), 'yyyy년 MM월 dd일 EEEE', { locale: ko })}
             </p>
@@ -199,7 +198,7 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
 
           {/* 감정 선택 */}
           <Card className="p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">오늘의 감정</h2>
+            <h2 className="text-xl font-semibold mb-4">오늘 기분은 어땠어? </h2>
             <div className="grid grid-cols-3 gap-4">
               {(Object.keys(emotionConfig) as Emotion[]).map((emotion) => (
                 <Button
