@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useGratitudeEntries, Emotion, GratitudeItemInput } from '../hooks/useGratitudeEntries';
+import { useGratitudeEntries } from '../hooks/useGratitudeEntries';
+import { Emotion, GratitudeItemInput } from '../types';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { geminiService, GratitudeItem } from '../services/geminiService';

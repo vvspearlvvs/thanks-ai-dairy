@@ -9,7 +9,8 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useGratitudeEntries, Emotion, GratitudeEntry } from '../hooks/useGratitudeEntries';
+import { useGratitudeEntries } from '../hooks/useGratitudeEntries';
+import { Emotion, GratitudeEntry } from '../types';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
