@@ -3,7 +3,6 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useGratitudeEntries, type Emotion, type GratitudeEntry } from '@/hooks/useGratitudeEntries';
 import { Heart, Sparkles, Send, Key, CheckCircle, Loader2, Calendar, BarChart3, List, Plus, ArrowLeft, Trash2 } from 'lucide-react';
@@ -23,7 +22,7 @@ const emotionConfig = {
   '뿌듯': { color: 'proud', icon: '😄', theme: 'success' },
   '편안': { color: 'calm', icon: '😉', theme: 'calm' },
   '피곤': { color: 'tired', icon: '😴', theme: 'neutral' },
-  '우울': { color: 'sad', icon: '��', theme: 'melancholy' }
+  '우울': { color: 'sad', icon: '😢', theme: 'melancholy' }
 };
 
 type ViewMode = 'diary' | 'list' | 'report';
@@ -254,17 +253,16 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
 
           {/* 감사 항목들 */}
           <Card className="p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">감사한 것들</h2>
             {gratitudeItems.map((item) => (
               <div key={item.id} className="mb-6 last:mb-0">
                 <h3 className="text-lg font-medium mb-3">{item.title}</h3>
                 {item.inputs.map((input, inputIndex) => (
                   <div key={inputIndex} className="flex gap-2 mb-2">
-                    <Textarea
+                    <Input
                       value={input}
                       onChange={(e) => updateInput(item.id, inputIndex, e.target.value)}
                       placeholder={'오늘 감사했던 일에 대해 작성해보세요.'}
-                      className="flex-1 min-h-[60px]"
+                      className="flex-1"
                     />
                     {item.inputs.length > 1 && (
                       <Button
@@ -293,7 +291,7 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
           {/* 요약 입력 및 생성 */}
           <Card className="p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">오늘의 요약</h2>
+              <h2 className="text-xl font-semibold">하루 한줄 요약</h2>
               <Button
                 onClick={handleGenerateSummary}
                 disabled={isGeneratingSummary}
@@ -313,10 +311,10 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
                 )}
               </Button>
             </div>
-            <Textarea
+            <Input
               value={entry.summary}
               onChange={(e) => setEntry(prev => ({ ...prev, summary: e.target.value }))}
-              placeholder="오늘 하루를 요약해보세요... (AI 요약 생성 버튼을 눌러보세요!)"
+              placeholder="AI가 오늘 하루를 한줄로 요약해줘요. (AI 요약 생성 버튼을 눌러보세요!)"
               className="min-h-[100px]"
             />
             {!geminiService.isApiKeySet() && (

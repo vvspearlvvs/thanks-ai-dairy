@@ -9,11 +9,11 @@ import { Calendar, Heart, Trash2, Edit, ArrowLeft } from 'lucide-react';
 
 const emotionConfig = {
   '행복': { color: 'bg-red-100 text-red-800', icon: '🥰' },
-  '기쁨': { color: 'bg-teal-100 text-teal-800', icon: '��' },
+  '기쁨': { color: 'bg-teal-100 text-teal-800', icon: '🥳' },
   '뿌듯': { color: 'bg-blue-100 text-blue-800', icon: '😄' },
   '편안': { color: 'bg-green-100 text-green-800', icon: '😉' },
   '피곤': { color: 'bg-yellow-100 text-yellow-800', icon: '😴' },
-  '우울': { color: 'bg-purple-100 text-purple-800', icon: '��' }
+  '우울': { color: 'bg-purple-100 text-purple-800', icon: '😢' }
 };
 
 interface DiaryListProps {
@@ -115,14 +115,14 @@ export const DiaryList = ({ onBack, onEdit }: DiaryListProps) => {
 
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">오늘의 요약</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">오늘 요약</h3>
                   <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">
                     {selectedEntry.summary}
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">감사한 것들</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">감사 내용</h3>
                   <div className="space-y-4">
                     {selectedEntry.items.map((item, index) => (
                       <div key={index} className="bg-white p-4 rounded-lg border">
