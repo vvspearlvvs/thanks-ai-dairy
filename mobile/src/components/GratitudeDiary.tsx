@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGratitudeEntries, Emotion, GratitudeItemInput } from '../hooks/useGratitudeEntries';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { geminiService, GratitudeItem } from '../services/geminiService';
 
 const emotionConfig = {
   '행복': { color: '#FF6B6B', icon: '🥰', theme: 'warm' },
@@ -33,8 +34,10 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
   
   const [entry, setEntry] = useState<{
     emotion: Emotion;
+    summary: string;
   }>({
-    emotion: '행복'
+    emotion: '행복',
+    summary: ''
   });
 
   // 동적 감사 항목 관리
@@ -45,6 +48,7 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
   ]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   // 선택된 날짜의 일기 확인
   const existingEntry = getEntryByDate(selectedDate);
@@ -53,7 +57,8 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
   useEffect(() => {
     if (existingEntry) {
       setEntry({
-        emotion: existingEntry.emotion
+        emotion: existingEntry.emotion,
+        summary: existingEntry.summary || ''
       });
       
       // 기존 데이터를 동적 항목으로 변환
@@ -77,7 +82,8 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
     } else {
       // 새 일기인 경우 기본값으로 초기화
       setEntry({
-        emotion: '행복'
+        emotion: '행복',
+        summary: ''
       });
       setGratitudeItems([
         { id: '1', title: '오늘도 잘했어, 나!', inputs: [''] },
@@ -86,6 +92,40 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
       ]);
     }
   }, [selectedDate, existingEntry]);
+
+  const handleGenerateSummary = async () => {
+    if (!geminiService.isApiKeySet()) {
+      Alert.alert('알림', 'GEMINI_API_KEY가 환경변수에 설정되지 않았습니다. .env 파일을 확인해주세요.');
+      return;
+    }
+
+    const itemsToProcess = gratitudeItems
+      .filter(item => item.inputs.some(input => input.trim()))
+      .map(item => ({
+        title: item.title,
+        content: item.inputs.filter(input => input.trim()).join('\n')
+      }));
+
+    if (itemsToProcess.length === 0) {
+      Alert.alert('알림', '감사한 일을 먼저 입력해주세요.');
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+    try {
+      const summary = await geminiService.generateSummary({
+        emotion: entry.emotion,
+        items: itemsToProcess
+      });
+      
+      setEntry(prev => ({ ...prev, summary }));
+    } catch (error) {
+      console.error('요약 생성 실패:', error);
+      Alert.alert('오류', '요약 생성에 실패했습니다. API 키를 확인해주세요.');
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
 
   const handleSave = async () => {
     // 감사 항목이 하나라도 입력되었는지 확인
@@ -98,6 +138,11 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
       return;
     }
 
+    if (!entry.summary.trim()) {
+      Alert.alert('알림', '하루 요약을 입력해주세요.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const itemsToSave = gratitudeItems
@@ -107,10 +152,7 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
           content: item.inputs.filter(input => input.trim()).join('\n')
         }));
 
-      // 요약을 자동으로 생성 (감사 항목들의 제목을 조합)
-      const summary = itemsToSave.map(item => item.title).join(', ');
-
-      await saveEntry(selectedDate, entry.emotion, summary, itemsToSave);
+      await saveEntry(selectedDate, entry.emotion, entry.summary, itemsToSave);
       Alert.alert('성공', '감사 일기가 저장되었습니다!');
     } catch (error) {
       Alert.alert('오류', '저장 중 오류가 발생했습니다.');
@@ -260,6 +302,36 @@ export const GratitudeDiary = ({ onShowList }: GratitudeDiaryProps) => {
               </TouchableOpacity>
             </View>
           ))}
+        </View>
+
+        {/* 요약 입력 섹션 */}
+        <View style={styles.summarySection}>
+          <View style={styles.summaryHeader}>
+            <Text style={styles.sectionTitle}>하루 한줄 요약</Text>
+            <TouchableOpacity
+              style={[styles.generateButton, isGeneratingSummary && styles.disabledButton]}
+              onPress={handleGenerateSummary}
+              disabled={isGeneratingSummary}
+            >
+              {isGeneratingSummary ? (
+                <ActivityIndicator color="#4ECDC4" size="small" />
+              ) : (
+                <Text style={styles.generateButtonText}>✨ AI 요약 생성</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={styles.summaryInput}
+            value={entry.summary}
+            onChangeText={(text) => setEntry(prev => ({ ...prev, summary: text }))}
+            placeholder="AI가 오늘 하루를 한줄로 요약해줘요. (AI 요약 생성 버튼을 눌러보세요!)"
+            multiline
+          />
+          {!geminiService.isApiKeySet() && (
+            <Text style={styles.warningText}>
+              ⚠️ GEMINI_API_KEY가 환경변수에 설정되지 않았습니다. .env 파일을 확인해주세요.
+            </Text>
+          )}
         </View>
 
         {/* 저장/삭제 버튼 */}
@@ -452,6 +524,58 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  summarySection: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 30,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  generateButton: {
+    backgroundColor: '#4ECDC4',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#4ECDC4',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  generateButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  summaryInput: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    textAlignVertical: 'top',
+    minHeight: 100,
+    fontWeight: '500',
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#ff6b6b',
+    marginTop: 8,
+    textAlign: 'center',
   },
   buttonContainer: {
     gap: 16,

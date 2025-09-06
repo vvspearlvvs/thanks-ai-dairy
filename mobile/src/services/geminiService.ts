@@ -13,7 +13,7 @@ export class GeminiService {
 
   constructor() {
     // 환경변수에서 API 키 읽어오기
-    this.apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+    this.apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
     
     if (!this.apiKey) {
       console.warn('GEMINI_API_KEY가 환경변수에 설정되지 않았습니다.');

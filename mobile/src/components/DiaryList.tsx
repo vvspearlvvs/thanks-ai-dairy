@@ -172,7 +172,6 @@ export const DiaryList = ({ onBack, onEdit }: DiaryListProps) => {
             </View>
 
             <View style={styles.detailContent}>
-              <Text style={styles.detailSectionTitle}>감사한 것들</Text>
               {selectedEntry.items.map((item, index) => (
                 <View key={index} style={styles.detailItem}>
                   <Text style={styles.detailItemTitle}>{item.title}</Text>
